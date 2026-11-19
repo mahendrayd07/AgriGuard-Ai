@@ -3,6 +3,12 @@ const preview = document.getElementById("preview");
 const analyzeButton = document.getElementById("analyzeButton");
 const result = document.getElementById("result");
 
+// Use the local FastAPI server during development and the same deployed
+// origin when the app is opened from Render.
+const API_BASE = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+  ? "http://127.0.0.1:8000"
+  : window.location.origin;
+
 const form = document.querySelector("form");
 
 if (form) {
@@ -41,7 +47,7 @@ analyzeButton.addEventListener("click", async (event) => {
   analyzeButton.disabled = true;
 
   try {
-    const response = await fetch("http://127.0.0.1:8000/predict", {
+    const response = await fetch(`${API_BASE}/predict`, {
       method: "POST",
       body: formData,
     });
