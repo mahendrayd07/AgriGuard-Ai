@@ -14,20 +14,27 @@ os.environ["TF_NUM_INTRAOP_THREADS"] = "1"
 os.environ["TF_NUM_INTEROP_THREADS"] = "1"
 
 import numpy as np
-import tensorflow as tf
+
+try:
+    from tflite_runtime.interpreter import Interpreter
+    TFLITE_AVAILABLE = True
+except ImportError:
+    # Local Windows development can continue using the existing Keras setup.
+    import tensorflow as tf
+    TFLITE_AVAILABLE = False
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from PIL import Image
 
-try:
-    tf.config.set_visible_devices([], "GPU")
-    tf.config.threading.set_intra_op_parallelism_threads(1)
-    tf.config.threading.set_inter_op_parallelism_threads(1)
-except RuntimeError:
-    # Devices may already be initialized in local development.
-    pass
+if not TFLITE_AVAILABLE:
+    try:
+        tf.config.set_visible_devices([], "GPU")
+        tf.config.threading.set_intra_op_parallelism_threads(1)
+        tf.config.threading.set_inter_op_parallelism_threads(1)
+    except RuntimeError:
+        pass
 
 try:
     import psycopg
@@ -49,13 +56,21 @@ MODEL_PATHS = {
     "potato": PROJECT_DIR / "models" / "potato_disease.keras",
     "rice": PROJECT_DIR / "models" / "rice_disease.keras",
 }
+TFLITE_PATHS = {
+    crop: path.with_suffix(".tflite") for crop, path in MODEL_PATHS.items()
+}
 MODELS = {}
 
 
 def get_model(crop_key):
     """Load one model only when that crop is first requested."""
     if crop_key not in MODELS:
-        MODELS[crop_key] = tf.keras.models.load_model(MODEL_PATHS[crop_key])
+        if TFLITE_AVAILABLE:
+            interpreter = Interpreter(model_path=str(TFLITE_PATHS[crop_key]))
+            interpreter.allocate_tensors()
+            MODELS[crop_key] = interpreter
+        else:
+            MODELS[crop_key] = tf.keras.models.load_model(MODEL_PATHS[crop_key])
     return MODELS[crop_key]
 
 with open(PROJECT_DIR / "models" / "class_names.json", encoding="utf-8") as file:
@@ -389,7 +404,15 @@ async def predict_disease(
             axis=0,
         )
 
-        probabilities = get_model(crop_key).predict(image_array, verbose=0)[0]
+        model = get_model(crop_key)
+        if TFLITE_AVAILABLE:
+            input_details = model.get_input_details()[0]
+            output_details = model.get_output_details()[0]
+            model.set_tensor(input_details["index"], image_array)
+            model.invoke()
+            probabilities = model.get_tensor(output_details["index"])[0]
+        else:
+            probabilities = model.predict(image_array, verbose=0)[0]
         predicted_index = int(np.argmax(probabilities))
         predicted_class = CLASS_NAMES[crop_key][predicted_index]
         confidence = round(float(probabilities[predicted_index]) * 100, 2)
