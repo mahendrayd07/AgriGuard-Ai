@@ -125,3 +125,99 @@ historyButton.addEventListener("click", async () => {
     history.hidden = false;
   }
 });
+
+const chatForm = document.getElementById("chatForm");
+const chatInput = document.getElementById("chatInput");
+const chatMessages = document.getElementById("chatMessages");
+
+function addChatMessage(text, type) {
+  const message = document.createElement("div");
+  message.className = `chat-message ${type}`;
+  message.textContent = text;
+  chatMessages.appendChild(message);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+async function askChatbot(question) {
+  const trimmed = question.trim();
+  if (!trimmed) return;
+
+  addChatMessage(trimmed, "user");
+  chatInput.value = "";
+  addChatMessage("Soch raha hoon...", "bot typing");
+  const typingMessage = chatMessages.lastElementChild;
+
+  try {
+    const response = await fetch(`${API_BASE}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question: trimmed,
+        crop: document.getElementById("crop").value,
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Chat request failed.");
+    typingMessage.remove();
+    addChatMessage(data.reply, "bot");
+    if (data.safety) addChatMessage(`Safety: ${data.safety}`, "bot safety");
+  } catch (error) {
+    typingMessage.remove();
+    addChatMessage(`Chat unavailable: ${error.message}`, "bot error");
+  }
+}
+
+chatForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  askChatbot(chatInput.value);
+});
+
+document.querySelectorAll(".quick-question").forEach((button) => {
+  button.addEventListener("click", () => askChatbot(button.textContent));
+});
+
+const menuButton = document.getElementById("menuButton");
+const sidebar = document.querySelector(".sidebar");
+if (menuButton) {
+  menuButton.addEventListener("click", () => sidebar.classList.toggle("open"));
+  document.querySelectorAll(".side-nav a").forEach((link) => {
+    link.addEventListener("click", () => sidebar.classList.remove("open"));
+  });
+}
+
+function weatherDescription(code) {
+  if (code === 0) return ["Clear sky", "☀️"];
+  if ([1, 2, 3].includes(code)) return ["Partly cloudy", "🌤️"];
+  if ([45, 48].includes(code)) return ["Foggy", "🌫️"];
+  if ([51, 53, 55, 56, 57].includes(code)) return ["Drizzle", "🌦️"];
+  if ([61, 63, 65, 80, 81, 82].includes(code)) return ["Rain", "🌧️"];
+  if ([95, 96, 99].includes(code)) return ["Thunderstorm", "⛈️"];
+  return ["Mixed weather", "🌤️"];
+}
+
+async function updateWeather() {
+  const weatherUrl = "https://api.open-meteo.com/v1/forecast?latitude=27.24&longitude=79.02&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=Asia%2FKolkata&forecast_days=4";
+  try {
+    const response = await fetch(weatherUrl);
+    if (!response.ok) throw new Error("Weather service unavailable");
+    const data = await response.json();
+    const current = weatherDescription(data.current.weather_code);
+    document.getElementById("weatherTemp").innerHTML = `${Math.round(data.current.temperature_2m)}°<sup>C</sup>`;
+    document.getElementById("weatherSummary").textContent = `${current[0]} · Mainpuri, UP`;
+    document.getElementById("weatherIcon").textContent = current[1];
+    document.getElementById("weatherLargeTemp").textContent = `${Math.round(data.current.temperature_2m)}°`;
+    document.getElementById("weatherLargeSummary").textContent = `${current[0]} · updated now`;
+    document.getElementById("weatherLargeIcon").textContent = current[1];
+    document.getElementById("forecastDays").innerHTML = data.daily.time.map((date, index) => {
+      const day = new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+      const dayWeather = weatherDescription(data.daily.weather_code[index]);
+      return `<span><b>${day}</b><strong>${Math.round(data.daily.temperature_2m_max[index])}°</strong><small>${dayWeather[0]}</small></span>`;
+    }).join("");
+  } catch (error) {
+    document.getElementById("weatherSummary").textContent = "Weather unavailable · Mainpuri, UP";
+    document.getElementById("weatherLargeSummary").textContent = "Connect to internet to update";
+  }
+}
+
+updateWeather();
+setInterval(updateWeather, 30 * 60 * 1000);

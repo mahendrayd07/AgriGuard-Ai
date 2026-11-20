@@ -3,49 +3,63 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AgriGuard AI</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>AgriGuard AI | Farmer Dashboard</title>
+  <link rel="stylesheet" href="style.css?v=3" />
 </head>
 <body>
-  <main class="container">
-    <h1>🌿 AgriGuard AI</h1>
-    <p class="subtitle">Crop disease and pest screening assistant</p>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">🌿</span><span>agri<span>guard</span></span></div>
+      <nav class="side-nav" aria-label="Main navigation">
+        <a class="active" href="#dashboard">▦ <span>Dashboard</span></a>
+        <a href="#screening">⌁ <span>Analytics</span></a>
+        <a href="#screening">⌁ <span>Fields</span></a>
+        <a href="#history">◫ <span>Reports</span></a>
+        <a href="#weather">☼ <span>Weather</span></a>
+        <a href="#settings">⚙ <span>Settings</span></a>
+      </nav>
+      <div class="sidebar-bottom"><span>↪</span> Logout</div>
+    </aside>
 
-    <section class="card">
-      <label for="crop">Select crop</label>
-      <select id="crop">
-        <option value="tomato">Tomato</option>
-        <option value="potato">Potato</option>
-        <option value="rice">Rice</option>
-      </select>
+    <main class="dashboard" id="dashboard">
+      <header class="topbar">
+        <button id="menuButton" class="menu-button" type="button" aria-label="Open menu">☰</button><div class="mobile-brand"><span class="brand-mark">🌿</span> AgriGuard AI</div>
+        <label class="search-box"><span>⌕</span><input type="search" placeholder="Search any crop or disease" /></label>
+        <div class="profile"><span class="avatar">M</span><span class="profile-name">Mahendra</span><span>⌄</span></div>
+      </header>
 
-      <label for="image">Upload a clear leaf image</label>
-      <input id="image" type="file" accept="image/*" />
+      <section class="welcome-row">
+        <div><p class="eyebrow">FARM OVERVIEW</p><h1>Good morning, Mahendra <span>👋</span></h1><p class="subtitle">Monitor your crops and keep your farm healthy.</p></div>
+        <button class="primary compact" onclick="document.getElementById('screening').scrollIntoView({behavior:'smooth'})">+ New screening</button>
+      </section>
 
-      <img id="preview" alt="Selected leaf preview" hidden />
+      <section class="summary-grid" aria-label="Farm summary">
+        <article class="summary-card mint"><div><span class="card-label">Total screenings</span><strong id="scanCount">0</strong><small>All time reports</small></div><span class="card-icon">⌁</span></article>
+        <article class="summary-card blue"><div><span class="card-label">Healthy crops</span><strong id="healthyCount">—</strong><small>Based on your reports</small></div><span class="card-icon">✓</span></article>
+        <article class="summary-card yellow"><div><span class="card-label">Crops to monitor</span><strong id="monitorCount">—</strong><small>Needs attention</small></div><span class="card-icon">!</span></article>
+        <article class="weather-card" id="weather"><div><span class="card-label">Today’s weather</span><strong id="weatherTemp">--°<sup>C</sup></strong><small id="weatherSummary">Loading · Mainpuri, UP</small></div><span id="weatherIcon" class="weather-icon">🌤️</span></article>
+      </section>
 
-      <button id="analyzeButton" type="button">Analyze Image</button>
-    </section>
+      <section class="content-grid">
+        <article class="farm-banner"><div class="banner-copy"><p class="eyebrow light">MANAGE YOUR FARM</p><h2>Healthier crops.<br />Better harvests.</h2><button class="banner-button" onclick="document.getElementById('screening').scrollIntoView({behavior:'smooth'})">Check a leaf <span>→</span></button></div><div class="field-art" aria-hidden="true"><span>☀</span><i></i><i></i><i></i><b>▰</b></div></article>
+        <article class="weather-panel"><div class="panel-heading"><h3>Weather forecast</h3><a href="#weather">Live update</a></div><div class="forecast-main"><span id="weatherLargeIcon" class="weather-large">🌤️</span><div><strong id="weatherLargeTemp">--°</strong><small id="weatherLargeSummary">Fetching Mainpuri weather...</small></div></div><div id="forecastDays" class="forecast-days"><span><b>Loading</b><strong>--°</strong><small>Fetching forecast</small></span><span><b>Loading</b><strong>--°</strong><small>Fetching forecast</small></span><span><b>Loading</b><strong>--°</strong><small>Fetching forecast</small></span><span><b>Loading</b><strong>--°</strong><small>Fetching forecast</small></span></div></article>
+      </section>
 
-    <section id="result" class="card result" hidden>
-      <h2>Screening Result</h2>
-      <p id="prediction"></p>
-      <p id="confidence"></p>
-      <p id="severity"></p>
-      <p id="advisory"></p>
-      <p class="notice">
-        This is an AI screening result, not a guaranteed diagnosis.
-        Follow local agricultural guidance and consult an expert if unsure.
-      </p>
-    </section>
-  </main>
-  <button id="historyButton" type="button">View Saved Reports</button>
+      <section class="section-heading" id="screening"><div><p class="eyebrow">CROP HEALTH</p><h2>Screen a crop</h2></div><span class="location-pill">📍 Uttar Pradesh, India</span></section>
+      <section class="screening-layout">
+        <article class="card screening-card"><div class="card-title-row"><div><h3>Upload a leaf image</h3><p>Use a clear photo in natural light for better results.</p></div><span class="step-badge">01</span></div><label for="crop">Select crop</label><select id="crop"><option value="tomato">Tomato</option><option value="potato">Potato</option><option value="rice">Rice</option></select><label class="upload-box" for="image"><span class="upload-icon">↑</span><span><strong>Choose a leaf image</strong><small>JPG, PNG or WEBP · Max 10 MB</small></span><input id="image" type="file" accept="image/*" /></label><img id="preview" alt="Selected leaf preview" hidden /><button id="analyzeButton" class="primary" type="button">Analyze image <span>→</span></button><div class="tip-row"><span>✓</span> Your image stays private and is used only for screening.</div></article>
+        <article class="card tips-card"><p class="eyebrow">QUICK TIPS</p><h3>Get a better result</h3><ul><li><span>01</span> Capture one leaf close-up</li><li><span>02</span> Avoid shadows and blur</li><li><span>03</span> Show the affected area clearly</li></ul><div class="help-callout"><span>💡</span><p><strong>Not sure what to ask?</strong><br />Try our farmer assistant below.</p></div></article>
+      </section>
 
-  <section id="history" class="card" hidden>
-    <h2>Saved Reports</h2>
-    <div id="historyContent"></div>
-  </section>
+      <section id="result" class="card result" hidden></section>
 
-  <script src="app.js"></script>
+      <section class="section-heading assistant-heading"><div><p class="eyebrow">YOUR FARM ASSISTANT</p><h2>Ask AgriGuard</h2></div><span class="online-pill">● Online</span></section>
+      <section class="card chat-card" aria-labelledby="chatTitle"><div class="chat-intro"><div class="bot-avatar">🌱</div><div><h3 id="chatTitle">Namaste, I’m your crop assistant</h3><p>Ask in Hindi, Hinglish or English about crop diseases, treatment and prevention.</p></div></div><div id="chatMessages" class="chat-messages" aria-live="polite"><div class="chat-message bot">Namaste! Aap apna farming question poochhiye. Main Tomato, Potato aur Rice ke liye guidance de sakta hoon.</div></div><div class="quick-questions"><button type="button" class="quick-question">Rice blast ka treatment?</button><button type="button" class="quick-question">Clear photo kaise lein?</button><button type="button" class="quick-question">Organic method batao</button></div><form id="chatForm" class="chat-form"><input id="chatInput" type="text" placeholder="Type your question here..." autocomplete="off" /><button class="primary" type="submit">Send <span>↑</span></button></form><p class="notice">AI guidance is for screening only. Confirm product label, dose and safety with your local KVK/agriculture officer.</p></section>
+
+      <section class="history-section" id="history"><div class="section-heading"><div><p class="eyebrow">ACTIVITY</p><h2>Recent reports</h2></div><button id="historyButton" class="text-button" type="button">View all →</button></div><div id="historyContent" class="card history-card" hidden></div></section>
+      <footer>AgriGuard AI · Built for farmers in India <span>•</span> Screening support, not a guaranteed diagnosis</footer>
+    </main>
+  </div>
+  <script src="app.js?v=3"></script>
 </body>
 </html>

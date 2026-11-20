@@ -5,6 +5,10 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Render's standard web instances are CPU-only. Prevent TensorFlow from
+# attempting CUDA initialization and crashing the service during startup.
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")
+
 import numpy as np
 import tensorflow as tf
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
