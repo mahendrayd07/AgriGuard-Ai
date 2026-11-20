@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -9,10 +10,23 @@ import tensorflow as tf
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 from PIL import Image
+
+try:
+    import psycopg
+    from psycopg.rows import dict_row
+except ImportError:  # PostgreSQL is only needed on Render; local uses SQLite.
+    psycopg = None
+    dict_row = None
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 DATABASE_PATH = PROJECT_DIR / "agri_guard.db"
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+
+def postgres_enabled():
+    return bool(DATABASE_URL and psycopg)
 
 MODELS = {
     "tomato": tf.keras.models.load_model(
@@ -175,6 +189,22 @@ treatments = {
 }
 
 def setup_database():
+    if postgres_enabled():
+        with psycopg.connect(DATABASE_URL) as connection:
+            connection.execute("""
+                CREATE TABLE IF NOT EXISTS reports (
+                    id BIGSERIAL PRIMARY KEY,
+                    crop TEXT NOT NULL,
+                    prediction TEXT NOT NULL,
+                    confidence DOUBLE PRECISION NOT NULL,
+                    severity TEXT NOT NULL,
+                    advisory TEXT NOT NULL,
+                    image_name TEXT,
+                    created_at TIMESTAMPTZ NOT NULL
+                )
+            """)
+        return
+
     with sqlite3.connect(DATABASE_PATH) as connection:
         connection.execute("""
             CREATE TABLE IF NOT EXISTS reports (
@@ -190,6 +220,19 @@ def setup_database():
         """)
 
 def save_report(result, image_name):
+    if postgres_enabled():
+        with psycopg.connect(DATABASE_URL) as connection:
+            connection.execute("""
+                INSERT INTO reports
+                (crop, prediction, confidence, severity, advisory, image_name, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (
+                result["crop"], result["prediction"], result["confidence"],
+                result["severity"], result["advisory"], image_name,
+                datetime.now(timezone.utc),
+            ))
+        return
+
     with sqlite3.connect(DATABASE_PATH) as connection:
         connection.execute("""
             INSERT INTO reports
@@ -209,6 +252,67 @@ setup_database()
 
 app = FastAPI(title="AgriGuard AI API")
 
+
+class ChatRequest(BaseModel):
+    question: str
+    crop: str | None = None
+
+
+def answer_farmer_question(question: str, crop: str | None = None) -> dict:
+    """Return cautious crop guidance without inventing pesticide doses."""
+    text = question.strip().lower()
+    crop_key = (crop or "").lower()
+    aliases = {
+        "early_blight": ("early blight", "early_blight", "अर्ली ब्लाइट", "झुलसा"),
+        "late_blight": ("late blight", "late_blight", "लेट ब्लाइट", "पछेती झुलसा"),
+        "bacterial": ("bacterial leaf blight", "bacterial", "बैक्टीरियल", "जीवाणु झुलसा"),
+        "blast": ("rice blast", "blast", "ब्लास्ट"),
+        "tungro": ("tungro", "टुंग्रो"),
+    }
+
+    class_key = None
+    for disease_key, words in aliases.items():
+        if any(word in text for word in words):
+            if disease_key == "early_blight" and crop_key == "potato":
+                class_key = "Potato___Early_blight"
+            elif disease_key == "early_blight":
+                class_key = "Tomato___Early_blight"
+            elif disease_key == "late_blight" and crop_key == "potato":
+                class_key = "Potato___Late_blight"
+            elif disease_key == "late_blight":
+                class_key = "Tomato___Late_blight"
+            elif disease_key == "bacterial":
+                class_key = "Rice___Bacterial_leaf_blight"
+            elif disease_key == "blast":
+                class_key = "Rice___Blast"
+            elif disease_key == "tungro":
+                class_key = "Rice___Tungro"
+            break
+
+    if class_key:
+        treatment = treatments[class_key]
+        return {
+            "reply": (
+                f"{display_names[class_key]} ke liye affected leaves ko monitor karein. "
+                f"Organic options: {'; '.join(treatment['organic'][:2])} "
+                f"Chemical options: {'; '.join(treatment['chemical'][:2])}"
+            ),
+            "organic": treatment["organic"],
+            "chemical": treatment["chemical"],
+            "safety": "Dose, product label, PPE aur harvest interval ke liye Uttar Pradesh KVK/agriculture officer se confirm karein.",
+        }
+
+    if any(word in text for word in ("photo", "image", "फोटो", "तस्वीर", "पहचान")):
+        return {
+            "reply": "Clear leaf photo upload karke Analyze Image dabaiye. Photo natural light me, ek affected leaf ka close-up ho.",
+            "suggestions": ["Upload a clear leaf image", "Select the correct crop first"],
+        }
+
+    return {
+        "reply": "Main Tomato, Potato aur Rice ke common diseases par guidance de sakta hoon. Disease ka naam ya apna sawal likhiye—jaise: 'Rice blast ka organic treatment kya hai?'",
+        "suggestions": ["Rice blast treatment", "Tomato late blight", "Clear photo kaise lein?"],
+    }
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -220,8 +324,22 @@ app.add_middleware(
 def health_check():
     return {"message": "AgriGuard AI backend is running"}
 
+
+@app.post("/chat")
+def farmer_chat(request: ChatRequest):
+    if not request.question.strip():
+        raise HTTPException(status_code=400, detail="Please enter a question.")
+    return answer_farmer_question(request.question, request.crop)
+
 @app.get("/reports")
 def get_reports():
+    if postgres_enabled():
+        with psycopg.connect(DATABASE_URL, row_factory=dict_row) as connection:
+            rows = connection.execute(
+                "SELECT * FROM reports ORDER BY id DESC"
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     with sqlite3.connect(DATABASE_PATH) as connection:
         connection.row_factory = sqlite3.Row
         rows = connection.execute(

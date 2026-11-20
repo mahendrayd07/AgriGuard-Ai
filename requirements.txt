@@ -4,3 +4,4 @@ python-multipart==0.0.20
 numpy<2.2
 Pillow==11.1.0
 tensorflow==2.20.0
+psycopg[binary]>=3.2,<4
