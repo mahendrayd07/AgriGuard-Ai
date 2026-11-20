@@ -7,7 +7,7 @@ from pathlib import Path
 
 # Render's standard web instances are CPU-only. Prevent TensorFlow from
 # attempting CUDA initialization and crashing the service during startup.
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "-1")
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 import numpy as np
 import tensorflow as tf
@@ -16,6 +16,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from PIL import Image
+
+try:
+    tf.config.set_visible_devices([], "GPU")
+except RuntimeError:
+    # Devices may already be initialized in local development.
+    pass
 
 try:
     import psycopg
