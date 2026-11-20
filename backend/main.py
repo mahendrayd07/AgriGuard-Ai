@@ -44,17 +44,19 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 def postgres_enabled():
     return bool(DATABASE_URL and psycopg)
 
-MODELS = {
-    "tomato": tf.keras.models.load_model(
-        PROJECT_DIR / "models" / "tomato_disease.keras"
-    ),
-    "potato": tf.keras.models.load_model(
-        PROJECT_DIR / "models" / "potato_disease.keras"
-    ),
-    "rice": tf.keras.models.load_model(
-        PROJECT_DIR / "models" / "rice_disease.keras"
-    ),
+MODEL_PATHS = {
+    "tomato": PROJECT_DIR / "models" / "tomato_disease.keras",
+    "potato": PROJECT_DIR / "models" / "potato_disease.keras",
+    "rice": PROJECT_DIR / "models" / "rice_disease.keras",
 }
+MODELS = {}
+
+
+def get_model(crop_key):
+    """Load one model only when that crop is first requested."""
+    if crop_key not in MODELS:
+        MODELS[crop_key] = tf.keras.models.load_model(MODEL_PATHS[crop_key])
+    return MODELS[crop_key]
 
 with open(PROJECT_DIR / "models" / "class_names.json", encoding="utf-8") as file:
     tomato_classes = json.load(file)
@@ -387,7 +389,7 @@ async def predict_disease(
             axis=0,
         )
 
-        probabilities = MODELS[crop_key].predict(image_array, verbose=0)[0]
+        probabilities = get_model(crop_key).predict(image_array, verbose=0)[0]
         predicted_index = int(np.argmax(probabilities))
         predicted_class = CLASS_NAMES[crop_key][predicted_index]
         confidence = round(float(probabilities[predicted_index]) * 100, 2)
