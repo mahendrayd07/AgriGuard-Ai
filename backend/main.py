@@ -66,7 +66,11 @@ def get_model(crop_key):
     """Load one model only when that crop is first requested."""
     if crop_key not in MODELS:
         if TFLITE_AVAILABLE:
-            interpreter = Interpreter(model_path=str(TFLITE_PATHS[crop_key]))
+            interpreter = Interpreter(
+                model_path=str(TFLITE_PATHS[crop_key]),
+                num_threads=1,
+                experimental_preserve_all_tensors=True,
+            )
             interpreter.allocate_tensors()
             MODELS[crop_key] = interpreter
         else:
