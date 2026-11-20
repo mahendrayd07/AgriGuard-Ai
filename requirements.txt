@@ -4,5 +4,5 @@ python-multipart==0.0.20
 numpy<2.2
 Pillow==11.1.0
 tensorflow==2.20.0; platform_system == "Windows"
-tflite-runtime-nightly==2.20.0.dev20250409; platform_system == "Linux"
+ai-edge-litert==2.3.0; platform_system == "Linux"
 psycopg[binary]>=3.2,<4
