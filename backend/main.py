@@ -388,7 +388,7 @@ async def predict_disease(
 ):
     crop_key = crop.lower()
 
-    if crop_key not in MODELS:
+    if crop_key not in MODEL_PATHS:
         raise HTTPException(
             status_code=400,
             detail="This crop is not supported yet."
