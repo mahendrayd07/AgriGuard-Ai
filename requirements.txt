@@ -3,6 +3,5 @@ uvicorn[standard]==0.34.0
 python-multipart==0.0.20
 numpy<2.2
 Pillow==11.1.0
-tensorflow==2.20.0; platform_system == "Windows"
-tensorflow-cpu==2.20.0; platform_system == "Linux"
+tensorflow-cpu==2.19.1
 psycopg[binary]>=3.2,<4
