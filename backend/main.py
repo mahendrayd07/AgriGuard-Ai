@@ -8,6 +8,10 @@ from pathlib import Path
 # Render's standard web instances are CPU-only. Prevent TensorFlow from
 # attempting CUDA initialization and crashing the service during startup.
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["TF_NUM_INTRAOP_THREADS"] = "1"
+os.environ["TF_NUM_INTEROP_THREADS"] = "1"
 
 import numpy as np
 import tensorflow as tf
@@ -19,6 +23,8 @@ from PIL import Image
 
 try:
     tf.config.set_visible_devices([], "GPU")
+    tf.config.threading.set_intra_op_parallelism_threads(1)
+    tf.config.threading.set_inter_op_parallelism_threads(1)
 except RuntimeError:
     # Devices may already be initialized in local development.
     pass
